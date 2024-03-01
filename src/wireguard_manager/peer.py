@@ -14,7 +14,7 @@ class WGPeer(WGUtilsMixin):
         self.allowed_ips = allowed_ips
         self.private_key = private_key
 
-    def generate_interface_config(self) -> str:
+    def generate_interface_config(self, dns: ipaddress.IPv4Address = ipaddress.IPv4Address('1.1.1.1')) -> str:
         if self.private_key:
             bytes_ = self.private_key.private_bytes(
                 encoding=serialization.Encoding.Raw,
@@ -25,10 +25,13 @@ class WGPeer(WGUtilsMixin):
             private_key = f'PrivateKey = {private_encoded}\n'
         if self.allowed_ips:
             allowed_ips = f'Address = {str(self.allowed_ips)}\n'
-        config = f'[Interface]\n{allowed_ips}{private_key}'
+
+        dns = f'DNS = {str(dns)}\n'
+
+        config = f'[Interface]\n{allowed_ips}{private_key}{dns}'
         return config
 
-    def generate_peer_config(self,dns: ipaddress.IPv4Address = ipaddress.IPv4Address('1.1.1.1')) -> str:
+    def generate_peer_config(self) -> str:
         if self.private_key:
             bytes_ = self.private_key.private_bytes(
                 encoding=serialization.Encoding.Raw,
@@ -45,12 +48,10 @@ class WGPeer(WGUtilsMixin):
             public_key = ''
             private_key = ''
 
-        dns = f'DNS = {str(dns)}\n'
-
         if self.allowed_ips:
             allowed_ips = f'AllowedIPs = {str(self.allowed_ips)}\n'
 
-        config = f'[Peer]\n{public_key}{allowed_ips}{private_key}{dns}\n\n'
+        config = f'[Peer]\n{public_key}{allowed_ips}{private_key}\n\n'
         return config
 
     @classmethod
