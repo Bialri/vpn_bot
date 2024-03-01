@@ -20,24 +20,24 @@ class WGManager(WGUtilsMixin):
             raise FileExistsError('directory is not exists')
         self.config_dir = config_dir
         self.config_prefix = config_prefix
-        self.interfaces = self._get_existing_interfaces()
+        self._load_existing_interfaces()
         self.postup_command_templates = postup_command_templates
         self.postdown_command_templates = postdown_command_templates
         self.default_dns = default_dns
         self.default_mtu = default_mtu
 
-    def _get_existing_interfaces(self) -> tuple[WGInterface, ...]:
+    def _load_existing_interfaces(self) -> tuple[WGInterface, ...]:
         config_names = self._get_interfaces_names(self.config_dir)
         interfaces = []
         for config_name in config_names:
             config_path = os.path.join(self.config_dir, f'{config_name}.conf')
             interface = WGInterface.load_existing(config_path)
             interfaces.append(interface)
-        return tuple(interfaces)
+        self.interfaces = interfaces
 
     def create_new_interface(self,
                              dns: ipaddress.IPv4Address = None,
-                             mtu: int = None):
+                             mtu: int = None) -> WGInterface:
         if not dns:
             dns = self.default_dns
         if not mtu:
@@ -49,6 +49,8 @@ class WGManager(WGUtilsMixin):
                                            self.postdown_command_templates)
         interface.save_config()
         interface.run_interface()
+        self._load_existing_interfaces()
+        return interface
 
     def get_active_interfaces(self) -> tuple[WGInterface, ...]:
         active_interfaces_names = subprocess.run(['wg', 'show', 'interfaces'], capture_output=True).stdout.decode(
@@ -59,6 +61,11 @@ class WGManager(WGUtilsMixin):
             if interface.name in active_interfaces_names:
                 active_interfaces.append(interface)
         return tuple(active_interfaces)
+
+    def delete_interface(self, interface: WGInterface) -> None:
+        interface.stop_interface()
+        interface.delete_config()
+        self.interfaces.remove(interface)
 
 
 path = Path("/etc/wireguard/")

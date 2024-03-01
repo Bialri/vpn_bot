@@ -155,6 +155,8 @@ class WGInterface(WGUtilsMixin):
         peer = WGPeer(allowed_ips=allowed_ips)
         peer.generate_key()
         self.peers.append(peer)
+        self.save_config()
+        self.update_config()
         return peer
 
     def save_config(self) -> None:
