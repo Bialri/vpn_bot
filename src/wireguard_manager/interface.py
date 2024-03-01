@@ -65,7 +65,7 @@ class WGInterface(WGUtilsMixin):
     def delete_config(self) -> None:
         config_path = os.path.join(self.config_dir, f'{self.name}.conf')
         self.stop_interface()
-        process = subprocess.run(['rm', 'config_path'], capture_output=True)
+        subprocess.run(['rm', config_path],capture_output=True)
 
     def convert_command_templates(self, command_templates: list[str]) -> tuple[str, ...]:
         commands = []
@@ -173,6 +173,7 @@ class WGInterface(WGUtilsMixin):
         config_path = os.path.join(self.config_dir, f'{self.name}.conf')
         with open(config_path, 'w') as file:
             file.write(self.generate_config())
+        self.update_config()
 
     @staticmethod
     def _generate_config_line(option: str, value: str | None) -> str:
@@ -236,7 +237,11 @@ class WGInterface(WGUtilsMixin):
             return config
 
     def update_config(self) -> None:
-        subprocess.call(['/bin/bash', '-c', f'"wg syncconf {self.name} <(wg-quick strip {self.name})"'])
+        process = subprocess.Popen(f'wg syncconf {self.name} <(wg-quick strip {self.name})',
+                                   shell=True,
+                                   executable='/bin/bash',
+                                   stdout=subprocess.PIPE)
+        process.wait()
 
     def run_interface(self) -> None:
         config_path = os.path.join(self.config_dir, f'{self.name}.conf')
