@@ -1,5 +1,4 @@
 import ipaddress
-from typing import Tuple
 
 from cryptography.hazmat.primitives.asymmetric.x25519 import X25519PrivateKey
 from cryptography.hazmat.primitives import serialization
@@ -18,7 +17,6 @@ class WGInterface(WGUtilsMixin):
                  address: ipaddress.IPv4Network | str = None,
                  listen_port: int = None,
                  private_key: X25519PrivateKey = None,
-                 dns: ipaddress.IPv4Address | str = None,
                  mtu: int = None,
                  post_up_commands: list[str] = None,
                  post_down_commands: list[str] = None,
@@ -30,9 +28,6 @@ class WGInterface(WGUtilsMixin):
         self.address = address
         self.listen_port = listen_port
         self.private_key = private_key
-        if dns is not None and isinstance(dns, str):
-            dns = ipaddress.ip_address(dns)
-        self.dns = dns
         self.mtu = mtu
         self.post_up_commands = post_up_commands
         if not post_up_commands:
@@ -55,17 +50,16 @@ class WGInterface(WGUtilsMixin):
     def create_new(cls,
                    prefix: str,
                    config_dir: Path | str,
-                   dns: ipaddress.IPv4Address | str = None,
                    mtu: int = None,
                    post_up_command_templates: list[str] = None,
                    post_down_command_templates: list[str] = None) -> "WGInterface":
-        return create_new_interface(prefix, config_dir, dns, mtu, post_up_command_templates,
+        return create_new_interface(prefix, config_dir, mtu, post_up_command_templates,
                                     post_down_command_templates)
 
     def delete_config(self) -> None:
         config_path = os.path.join(self.config_dir, f'{self.name}.conf')
         self.stop_interface()
-        subprocess.run(['rm', config_path],capture_output=True)
+        subprocess.run(['rm', config_path], capture_output=True)
 
     def convert_command_templates(self, command_templates: list[str]) -> tuple[str, ...]:
         commands = []
@@ -117,12 +111,6 @@ class WGInterface(WGUtilsMixin):
             decoded_key = codecs.decode(value.encode('utf8'), 'base64')
             private_key = X25519PrivateKey.from_private_bytes(decoded_key)
             return private_key
-        return None
-
-    def _config_dns(self, configuration_path: Path) -> ipaddress.IPv4Address | None:
-        value = self._get_matching_config_line(configuration_path, 'DNS')
-        if value:
-            return ipaddress.IPv4Address(value)
         return None
 
     def _config_mtu(self, configuration_path: Path) -> int | None:
@@ -181,7 +169,8 @@ class WGInterface(WGUtilsMixin):
             return f'{option} = {str(value)}\n'
         return ''
 
-    def _generate_config_lines(self, option: str, values: list[str]) -> str:
+    @staticmethod
+    def _generate_config_lines(option: str, values: list[str]) -> str:
         if values:
             return ''.join([f'{option} = {str(value)}\n' for value in values])
         return ''
@@ -214,9 +203,13 @@ class WGInterface(WGUtilsMixin):
     def generate_peer_config(self,
                              peer: WGPeer,
                              allowed_ips: ipaddress.IPv4Network = ipaddress.ip_network('0.0.0.0/0', strict=False),
-                             domain_name: str = None):
+                             domain_name: str = None,
+                             dns: ipaddress.IPv4Address = None):
         if peer in self.peers:
-            peer_interface = peer.generate_interface_config()
+            args = []
+            if dns:
+                args.append(dns)
+            peer_interface = peer.generate_interface_config(*args)
             if self.private_key:
                 public_key = self.private_key.public_key().public_bytes(encoding=serialization.Encoding.Raw,
                                                                         format=serialization.PublicFormat.Raw)
@@ -263,7 +256,6 @@ def load_config(configuration_path: Path | str) -> WGInterface:
     interface.name = interface._config_name(configuration_path)
     interface.listen_port = interface._config_listen_port(configuration_path)
     interface.private_key = interface._config_private_key(configuration_path)
-    interface.dns = interface._config_dns(configuration_path)
     interface.mtu = interface._config_mtu(configuration_path)
     interface.post_up_commands = interface._config_postup_commands(configuration_path)
     interface.post_down_commands = interface._config_postdown_commands(configuration_path)
@@ -273,7 +265,6 @@ def load_config(configuration_path: Path | str) -> WGInterface:
 
 def create_new_interface(prefix: str,
                          config_dir: Path | str,
-                         dns: ipaddress.IPv4Address | str = None,
                          mtu: int = None,
                          post_up_command_templates: list[str] = None,
                          post_down_command_templates: list[str] = None) -> "WGInterface":
@@ -285,9 +276,6 @@ def create_new_interface(prefix: str,
     interface.address = interface._get_free_subnetwork(config_dir)
     interface.listen_port = interface._get_free_port(config_dir)
     interface.private_key = interface._generate_private_key()
-    if isinstance(dns, str):
-        dns = ipaddress.ip_address(dns)
-    interface.dns = dns
     interface.mtu = mtu
     if not post_up_command_templates:
         post_up_commands = []
@@ -313,14 +301,3 @@ postdown = ['iptables -D INPUT -p udp --dport %wg_port -j ACCEPT',
             'iptables -D FORWARD -i ens3 -o %wg_interface -j ACCEPT',
             'iptables -D FORWARD -i %wg_interface -j ACCEPT', 'iptables -t nat -D POSTROUTING -o ens3 -j MASQUERADE',
             'ip6tables -D FORWARD -i %wg_interface -j ACCEPT', 'ip6tables -t nat -D POSTROUTING -o ens3 -j MASQUERADE']
-
-interface = WGInterface.create_new("wg", path, post_up_command_templates=postup, post_down_command_templates=postdown)
-for _ in range(3):
-    peer = interface.create_peer()
-interface.save_config()
-interface.run_interface()
-peer = interface.create_peer()
-
-interface.update_config()
-print(interface.generate_peer_config(peer))
-interface.delete_config()

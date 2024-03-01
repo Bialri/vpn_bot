@@ -16,7 +16,7 @@ class WGManager(WGUtilsMixin):
                  postdown_command_templates: list[str],
                  default_dns: ipaddress.IPv4Address = ipaddress.IPv4Address('1.1.1.1'),
                  default_mtu: int = None) -> None:
-        if not config_dir.is_dir() or os.path.exists(config_dir):
+        if not config_dir.is_dir():
             raise FileExistsError('directory is not exists')
         self.config_dir = config_dir
         self.config_prefix = config_prefix
@@ -44,7 +44,6 @@ class WGManager(WGUtilsMixin):
             mtu = self.default_mtu
         interface = WGInterface.create_new(self.config_prefix,
                                            self.config_dir,
-                                           dns,
                                            mtu,
                                            self.postup_command_templates,
                                            self.postdown_command_templates)
@@ -75,3 +74,5 @@ postdown = ['iptables -D INPUT -p udp --dport %wg_port -j ACCEPT',
 
 manager = WGManager(path, 'wg', postup, postdown)
 print(manager.get_active_interfaces())
+manager.create_new_interface()
+print(manager.interfaces)
