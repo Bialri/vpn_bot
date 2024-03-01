@@ -65,21 +65,4 @@ class WGManager(WGUtilsMixin):
     def delete_interface(self, interface: WGInterface) -> None:
         interface.stop_interface()
         interface.delete_config()
-        self.interfaces.remove(interface)
-
-
-path = Path("/etc/wireguard/")
-postup = ['iptables -I INPUT -p udp --dport %wg_port -j ACCEPT',
-          'iptables -I FORWARD -i ens3 -o %wg_interface -j ACCEPT',
-          'iptables -I FORWARD -i %wg_interface -j ACCEPT', 'iptables -t nat -A POSTROUTING -o ens3 -j MASQUERADE',
-          'ip6tables -I FORWARD -i %wg_interface -j ACCEPT', 'ip6tables -t nat -A POSTROUTING -o ens3 -j MASQUERADE']
-
-postdown = ['iptables -D INPUT -p udp --dport %wg_port -j ACCEPT',
-            'iptables -D FORWARD -i ens3 -o %wg_interface -j ACCEPT',
-            'iptables -D FORWARD -i %wg_interface -j ACCEPT', 'iptables -t nat -D POSTROUTING -o ens3 -j MASQUERADE',
-            'ip6tables -D FORWARD -i %wg_interface -j ACCEPT', 'ip6tables -t nat -D POSTROUTING -o ens3 -j MASQUERADE']
-
-manager = WGManager(path, 'wg', postup, postdown)
-print(manager.get_active_interfaces())
-manager.create_new_interface()
-print(manager.interfaces)
+        self._load_existing_interfaces()
