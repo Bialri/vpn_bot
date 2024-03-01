@@ -6,10 +6,10 @@ from aiogram import Bot, Dispatcher, F
 from aiogram.filters import Command, CommandStart
 from aiogram.types import Message
 
-from config import Config
-from menu import menu_keyboard
-from auth.auth import Identificator
-from vpn_profiles.router import router as profiles_router
+from src.config import Config
+from src.menu import menu_keyboard
+from src.auth.auth import Identificator
+from src.vpn_profiles.router import router as profiles_router
 
 
 dp = Dispatcher()
@@ -19,12 +19,12 @@ dp.include_router(profiles_router)
 @dp.message(CommandStart())
 async def start(message: Message):
     id = message.from_user.id
-    is_exist = await Identificator.check_user_existing(id)
+    is_exist = Identificator.check_user_existing(id)
     if is_exist:
         await message.answer('Привет, ты уже смешарик',reply_markup=menu_keyboard)
 
     else:
-        new_user = await Identificator.create_user(id)
+        new_user = Identificator.create_user(id)
         await message.answer('Привет, купи vpn',reply_markup=menu_keyboard)
 
 async def main():

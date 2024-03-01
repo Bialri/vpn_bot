@@ -1,21 +1,21 @@
 from sqlalchemy import select
 
-from src.database import async_session_maker
-from .models import User
+from src.database import session_maker
+from src.auth.models import User
 
 class Identificator:
     @classmethod
-    async def check_user_existing(cls, id: int) -> bool:
-        async with async_session_maker() as session:
-            user = await session.get(User,id)
+    def check_user_existing(cls, id: int) -> bool:
+        with session_maker() as session:
+            user = session.get(User,id)
             if user is None:
                 return False
             return True
 
     @classmethod
-    async def create_user(cls, id: int) -> User:
-        async with async_session_maker() as session:
+    def create_user(cls, id: int) -> User:
+        with session_maker() as session:
             new_user = User(id=id)
             session.add(new_user)
-            await session.commit()
+            session.commit()
             return new_user

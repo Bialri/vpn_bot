@@ -10,7 +10,7 @@ from alembic import context
 from src.config import Config
 from src.database import Base
 
-from src.auth.models import User, VPNProfile
+
 
 
 # this is the Alembic Config object, which provides
