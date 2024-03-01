@@ -190,14 +190,13 @@ class WGInterface(WGUtilsMixin):
         else:
             private_key = ''
 
-        dns = self._generate_config_line('DNS', self.dns)
         mtu = self._generate_config_line('MTU', self.mtu)
 
         post_up = self._generate_config_lines('PostUp', self.post_up_commands)
         post_down = self._generate_config_lines('PostDown', self.post_down_commands)
 
         peers = '\n\n'.join([peer.generate_peer_config() for peer in self.peers])
-        config = f'[Interface]\n{address}{listen_port}{private_key}{dns}{mtu}{post_up}{post_down}\n\n{peers}'
+        config = f'[Interface]\n{address}{listen_port}{private_key}{mtu}{post_up}{post_down}\n\n{peers}'
         return config
 
     def generate_peer_config(self,
