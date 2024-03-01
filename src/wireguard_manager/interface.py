@@ -300,5 +300,3 @@ for _ in range(3):
     peer = interface.create_peer()
 interface.save_config()
 print(interface.generate_peer_config(peer))
-
-print('OK!')
