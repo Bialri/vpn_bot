@@ -234,6 +234,13 @@ class WGInterface(WGUtilsMixin):
         subprocess.run(['wg', 'syncconf', self.name, '<', '(', 'wg-quick', 'strip', self.name, ')'],
                        capture_output=True)
 
+    def run_interface(self) -> None:
+        config_path = os.path.join(self.config_dir, f'{self.name}.conf')
+        subprocess.run(['wg-quick', 'up', config_path])
+
+    def stop_interface(self) -> None:
+        config_path = os.path.join(self.config_dir, f'{self.name}.conf')
+        subprocess.run(['wg-quick', 'down', config_path])
 
 def load_config(configuration_path: Path | str) -> WGInterface:
     interface = WGInterface()
@@ -287,11 +294,13 @@ def create_new_interface(prefix: str,
 
 
 path = Path("/etc/wireguard/")
-postup = ['iptables -I INPUT -p udp --dport %wg_port -j ACCEPT', 'iptables -I FORWARD -i ens3 -o %wg_interface -j ACCEPT',
+postup = ['iptables -I INPUT -p udp --dport %wg_port -j ACCEPT',
+          'iptables -I FORWARD -i ens3 -o %wg_interface -j ACCEPT',
           'iptables -I FORWARD -i %wg_interface -j ACCEPT', 'iptables -t nat -A POSTROUTING -o ens3 -j MASQUERADE',
           'ip6tables -I FORWARD -i %wg_interface -j ACCEPT', 'ip6tables -t nat -A POSTROUTING -o ens3 -j MASQUERADE']
 
-postdown = ['iptables -D INPUT -p udp --dport %wg_port -j ACCEPT', 'iptables -D FORWARD -i ens3 -o %wg_interface -j ACCEPT',
+postdown = ['iptables -D INPUT -p udp --dport %wg_port -j ACCEPT',
+            'iptables -D FORWARD -i ens3 -o %wg_interface -j ACCEPT',
             'iptables -D FORWARD -i %wg_interface -j ACCEPT', 'iptables -t nat -D POSTROUTING -o ens3 -j MASQUERADE',
             'ip6tables -D FORWARD -i %wg_interface -j ACCEPT', 'ip6tables -t nat -D POSTROUTING -o ens3 -j MASQUERADE']
 
@@ -299,4 +308,7 @@ interface = WGInterface.create_new("wg", path, post_up_command_templates=postup,
 for _ in range(3):
     peer = interface.create_peer()
 interface.save_config()
+interface.run_interface()
+peer = interface.create_peer()
+interface.update_config()
 print(interface.generate_peer_config(peer))
