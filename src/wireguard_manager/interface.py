@@ -62,6 +62,11 @@ class WGInterface(WGUtilsMixin):
         return create_new_interface(prefix, config_dir, dns, mtu, post_up_command_templates,
                                     post_down_command_templates)
 
+    def delete_config(self) -> None:
+        config_path = os.path.join(self.config_dir, f'{self.name}.conf')
+        self.stop_interface()
+        process = subprocess.run(['rm', 'config_path'], capture_output=True)
+
     def convert_command_templates(self, command_templates: list[str]) -> tuple[str, ...]:
         commands = []
         for command_template in command_templates:
@@ -231,8 +236,7 @@ class WGInterface(WGUtilsMixin):
             return config
 
     def update_config(self) -> None:
-        subprocess.run(['wg', 'syncconf', self.name, '<', '(', 'wg-quick', 'strip', self.name, ')'],
-                       capture_output=True)
+        subprocess.call(['/bin/bash', '-c', f'"wg syncconf {self.name} <(wg-quick strip {self.name})"'])
 
     def run_interface(self) -> None:
         config_path = os.path.join(self.config_dir, f'{self.name}.conf')
@@ -241,6 +245,7 @@ class WGInterface(WGUtilsMixin):
     def stop_interface(self) -> None:
         config_path = os.path.join(self.config_dir, f'{self.name}.conf')
         subprocess.run(['wg-quick', 'down', config_path])
+
 
 def load_config(configuration_path: Path | str) -> WGInterface:
     interface = WGInterface()
@@ -310,5 +315,7 @@ for _ in range(3):
 interface.save_config()
 interface.run_interface()
 peer = interface.create_peer()
+
 interface.update_config()
 print(interface.generate_peer_config(peer))
+interface.delete_config()
