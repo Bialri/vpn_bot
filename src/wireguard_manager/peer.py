@@ -2,7 +2,7 @@ import ipaddress
 from cryptography.hazmat.primitives.asymmetric.x25519 import X25519PrivateKey
 from cryptography.hazmat.primitives import serialization
 import codecs
-from core import WGUtilsMixin
+from utils import WGUtilsMixin
 
 
 class WGPeer(WGUtilsMixin):

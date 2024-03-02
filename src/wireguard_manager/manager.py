@@ -1,7 +1,7 @@
 import ipaddress
 import subprocess
 
-from core import WGUtilsMixin
+from utils import WGUtilsMixin
 from pathlib import Path
 import os
 

@@ -8,7 +8,7 @@ import os
 import subprocess
 
 from peer import WGPeer
-from core import WGUtilsMixin
+from utils import WGUtilsMixin
 from exceptions import TemplateError
 
 
