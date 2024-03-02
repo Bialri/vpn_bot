@@ -72,3 +72,7 @@ class WGManager(WGUtilsMixin):
         interface.stop_interface()
         interface.delete_config()
         self._load_existing_interfaces()
+
+    def delete_all(self) -> None:
+        for interface in self.interfaces:
+            self.delete_interface(interface)
