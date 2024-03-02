@@ -9,6 +9,7 @@ import subprocess
 
 from peer import WGPeer
 from core import WGUtilsMixin
+from exceptions import TemplateError
 
 
 class WGInterface(WGUtilsMixin):
@@ -60,7 +61,10 @@ class WGInterface(WGUtilsMixin):
     def delete_config(self) -> None:
         config_path = os.path.join(self.config_dir, f'{self.name}.conf')
         self.stop_interface()
-        subprocess.run(['rm', config_path], capture_output=True)
+        try:
+            os.remove(config_path)
+        except FileNotFoundError:
+            raise FileExistsError(f'Configuration file {config_path} does not exists')
 
     def convert_command_templates(self, command_templates: list[str]) -> tuple[str, ...]:
         commands = []
@@ -68,6 +72,10 @@ class WGInterface(WGUtilsMixin):
             command_template = command_template.replace('%wg_interface', self.name)
             command = command_template.replace('%wg_port', str(self.listen_port))
             commands.append(command)
+        for command in commands:
+            if '%wg' in command:
+                placeholder = command.split('%', 1)[0].split(' ')[0]
+                raise TemplateError(f"Unsupported placeholder {placeholder}")
         return tuple(commands)
 
     @staticmethod
