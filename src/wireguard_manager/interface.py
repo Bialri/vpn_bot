@@ -49,11 +49,12 @@ class WGInterface(WGUtilsMixin):
     @classmethod
     def create_new(cls,
                    prefix: str,
+                   network_prefix: int,
                    config_dir: Path | str,
                    mtu: int = None,
                    post_up_command_templates: list[str] = None,
                    post_down_command_templates: list[str] = None) -> "WGInterface":
-        return create_new_interface(prefix, config_dir, mtu, post_up_command_templates,
+        return create_new_interface(prefix, network_prefix, config_dir, mtu, post_up_command_templates,
                                     post_down_command_templates)
 
     def delete_config(self) -> None:
@@ -265,6 +266,7 @@ def load_config(configuration_path: Path | str) -> WGInterface:
 
 
 def create_new_interface(prefix: str,
+                         network_prefix: int,
                          config_dir: Path | str,
                          mtu: int = None,
                          post_up_command_templates: list[str] = None,
@@ -274,7 +276,7 @@ def create_new_interface(prefix: str,
         config_dir = Path(config_dir)
     interface.config_dir = config_dir
     interface.name = interface._get_free_interface_name(config_dir, prefix)
-    interface.address = interface._get_free_subnetwork(config_dir)
+    interface.address = interface._get_free_subnetwork(config_dir, network_prefix)
     interface.listen_port = interface._get_free_port(config_dir)
     interface.private_key = interface._generate_private_key()
     interface.mtu = mtu
@@ -290,15 +292,3 @@ def create_new_interface(prefix: str,
         post_down_commands = interface.convert_command_templates(post_down_command_templates)
     interface.post_down_commands = post_down_commands
     return interface
-
-
-path = Path("/etc/wireguard/")
-postup = ['iptables -I INPUT -p udp --dport %wg_port -j ACCEPT',
-          'iptables -I FORWARD -i ens3 -o %wg_interface -j ACCEPT',
-          'iptables -I FORWARD -i %wg_interface -j ACCEPT', 'iptables -t nat -A POSTROUTING -o ens3 -j MASQUERADE',
-          'ip6tables -I FORWARD -i %wg_interface -j ACCEPT', 'ip6tables -t nat -A POSTROUTING -o ens3 -j MASQUERADE']
-
-postdown = ['iptables -D INPUT -p udp --dport %wg_port -j ACCEPT',
-            'iptables -D FORWARD -i ens3 -o %wg_interface -j ACCEPT',
-            'iptables -D FORWARD -i %wg_interface -j ACCEPT', 'iptables -t nat -D POSTROUTING -o ens3 -j MASQUERADE',
-            'ip6tables -D FORWARD -i %wg_interface -j ACCEPT', 'ip6tables -t nat -D POSTROUTING -o ens3 -j MASQUERADE']

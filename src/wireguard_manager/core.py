@@ -17,7 +17,7 @@ class WGUtilsMixin:
         return ip_address
 
     @staticmethod
-    def _get_interfaces_addresses(config_dir: Path) -> list[str]:
+    def _get_interfaces_addresses(config_dir: Path) -> list[ipaddress.IPv4Network, ...]:
         interface_paths = config_dir.glob('*.conf')
         addresses = []
         for interface_path in interface_paths:
@@ -53,12 +53,13 @@ class WGUtilsMixin:
                 return port
 
     @classmethod
-    def _get_free_subnetwork(cls, config_dir: Path) -> ipaddress.IPv4Network:
+    def _get_free_subnetwork(cls, config_dir: Path, network_prefix: int) -> ipaddress.IPv4Network:
         local_network = ipaddress.ip_network('10.0.0.0/8')
-        subnets = list(local_network.subnets(new_prefix=28))
+        subnets = local_network.subnets(new_prefix=network_prefix)
         existing_subnets = cls._get_interfaces_addresses(config_dir)
-        subnets = list(filter(lambda x: x not in existing_subnets, subnets))
-        return min(subnets)
+        for subnet in subnets:
+            if not any(subnet.overlaps(existing_subnet) for existing_subnet in existing_subnets):
+                return subnet
 
     @classmethod
     def _get_free_interface_name(cls, config_dir: Path, prefix: str) -> str:

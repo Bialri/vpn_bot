@@ -12,6 +12,7 @@ class WGManager(WGUtilsMixin):
     def __init__(self,
                  config_dir: Path,
                  config_prefix: str,
+                 default_network_prefix: int,
                  postup_command_templates: list[str],
                  postdown_command_templates: list[str],
                  default_dns: ipaddress.IPv4Address = ipaddress.IPv4Address('1.1.1.1'),
@@ -20,6 +21,7 @@ class WGManager(WGUtilsMixin):
             raise FileExistsError('directory is not exists')
         self.config_dir = config_dir
         self.config_prefix = config_prefix
+        self.default_network_prefix = default_network_prefix
         self._load_existing_interfaces()
         self.postup_command_templates = postup_command_templates
         self.postdown_command_templates = postdown_command_templates
@@ -36,13 +38,17 @@ class WGManager(WGUtilsMixin):
         self.interfaces = interfaces
 
     def create_new_interface(self,
+                             network_prefix: int = None,
                              dns: ipaddress.IPv4Address = None,
                              mtu: int = None) -> WGInterface:
         if not dns:
             dns = self.default_dns
         if not mtu:
             mtu = self.default_mtu
+        if not network_prefix:
+            network_prefix = self.default_network_prefix
         interface = WGInterface.create_new(self.config_prefix,
+                                           network_prefix,
                                            self.config_dir,
                                            mtu,
                                            self.postup_command_templates,
