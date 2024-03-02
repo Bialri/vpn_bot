@@ -6,15 +6,33 @@ from utils import WGUtilsMixin
 
 
 class WGPeer(WGUtilsMixin):
+    """
+    Implementation of wireguard interface peer.
+    """
     def __init__(self,
                  allowed_ips: ipaddress.IPv4Network | str = None,
                  private_key: X25519PrivateKey = None) -> None:
+        """
+        Peer initialization.
+        Args:
+            allowed_ips(IPv4Network | str): Subnetwork available for peer.
+            private_key(X25519PrivateKey): Peer private key.
+        """
         if isinstance(allowed_ips, str):
             allowed_ips = ipaddress.ip_network(allowed_ips, strict=False)
         self.allowed_ips = allowed_ips
         self.private_key = private_key
 
     def generate_interface_config(self, dns: ipaddress.IPv4Address = ipaddress.IPv4Address('1.1.1.1')) -> str:
+        """
+        Generate peer config for client side.
+        Args:
+            dns(IPv4Address): DNS will be used from client side, by default Cloudflare DNS.
+
+        Returns:
+            str: Text peer config for client side.
+
+        """
         if self.private_key:
             bytes_ = self.private_key.private_bytes(
                 encoding=serialization.Encoding.Raw,
@@ -32,6 +50,12 @@ class WGPeer(WGUtilsMixin):
         return config
 
     def generate_peer_config(self) -> str:
+        """
+        Generate peer config for server side.
+
+        Returns:
+            str: Text peer config for server side.
+        """
         if self.private_key:
             bytes_ = self.private_key.private_bytes(
                 encoding=serialization.Encoding.Raw,
@@ -56,10 +80,29 @@ class WGPeer(WGUtilsMixin):
 
     @classmethod
     def from_config(cls, peer_config: str) -> "WGPeer":
+        """
+        Load peer from text server side config.
+        Args:
+            peer_config: Text server side config.
+
+        Returns:
+            WGPeer: Loaded peer.
+
+        """
         return peer_from_config(peer_config)
 
     @staticmethod
     def _private_key_config(peer_config: str) -> X25519PrivateKey | None:
+        """
+        Get and decode private key from text server side config
+        Args:
+            peer_config(str): Text server side config.
+
+        Returns:
+            X25519PrivateKey: if private key field exists in peer config
+            None: if not exists
+
+        """
         lines = peer_config.split('\n')
         for line in lines:
             if '# PrivateKey' in line:
@@ -71,6 +114,16 @@ class WGPeer(WGUtilsMixin):
 
     @staticmethod
     def _allowed_ips_config(peer_config: str) -> ipaddress.IPv4Network | None:
+        """
+        Get and subnetwork from text server side config
+        Args:
+            peer_config(str): Text server side config.
+
+        Returns:
+            IPv4Network: if address field exists in peer config
+            None: if not exists
+
+        """
         lines = peer_config.split('\n')
         for line in lines:
             if 'AllowedIPs' in line:
@@ -78,7 +131,11 @@ class WGPeer(WGUtilsMixin):
                 return ipaddress.ip_network(value, False)
         return None
 
-    def generate_key(self) -> None:
+    def set_key(self) -> None:
+        """
+        Set new peer private key
+
+        """
         self.private_key = self._generate_private_key()
 
 
