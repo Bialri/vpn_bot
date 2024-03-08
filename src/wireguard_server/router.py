@@ -13,7 +13,7 @@ async def get_interfaces(api_key: APIKey = Depends(api_key_auth)):
     return [interface.name for interface in interfaces]
 
 @router.post("/", tags=["interface"])
-async def create_interface(network_size: int = None ,api_key: APIKey = Depends):
+async def create_interface(network_size: int = None ,api_key: APIKey = Depends(api_key_auth)):
     try:
         interface = manager.create_new_interface(network_size)
         return {"status": "success",
@@ -62,7 +62,7 @@ async def create_peer(interface_name: str, peer_name: str, api_key: APIKey = Dep
         if interface.name == interface_name:
             try:
                 peer = interface.create_peer(peer_name)
-                return peer.generate_interface_config()
+                return {'config': interface.generate_peer_config(peer)}
             except Exception as e:
                 raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Interface not found")
@@ -78,7 +78,7 @@ async def update_peer(interface_name: str, peer_name: str, name: str, api_key: A
                     try:
                         peer.name = name
                         interface.save_config()
-                        return peer.generate_interface_config()
+                        return {'config': interface.generate_peer_config(peer)}
                     except Exception as e:
                         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Peer not found")

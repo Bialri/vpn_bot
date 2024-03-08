@@ -7,9 +7,9 @@ from pathlib import Path
 import os
 import subprocess
 
-from peer import WGPeer
-from utils import WGUtilsMixin
-from exceptions import TemplateError
+from .peer import WGPeer
+from .utils import WGUtilsMixin
+from .exceptions import TemplateError
 
 
 class WGInterface(WGUtilsMixin):
