@@ -1,6 +1,7 @@
-from src.wireguard_manager.manager import WGManager
+from wireguard_manager.manager import WGManager
+from pathlib import Path
 
-CONFIG_DIR = '/etc/wireguard/'
+CONFIG_DIR = Path('/etc/wireguard/')
 CONFIG_PREFIX = 'wg0'
 DEFAULT_NETWORK_PREFIX = 28
 POSTUP_TEMPLATES = ['iptables -I INPUT -p udp --dport %wg_port -j ACCEPT',
