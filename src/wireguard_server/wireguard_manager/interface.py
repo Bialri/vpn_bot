@@ -205,6 +205,8 @@ class WGInterface(WGUtilsMixin):
 
     def delete_peer(self, peer):
         self.peers.remove(peer)
+        self.save_config()
+        self.update_config()
 
     def create_peer(self, name:str = None) -> WGPeer:
         allowed_ips = min(self._free_ips())
