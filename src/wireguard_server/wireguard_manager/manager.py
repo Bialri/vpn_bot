@@ -5,7 +5,7 @@ from .utils import WGUtilsMixin
 from pathlib import Path
 import os
 
-from interface import WGInterface
+from .interface import WGInterface
 
 
 class WGManager(WGUtilsMixin):

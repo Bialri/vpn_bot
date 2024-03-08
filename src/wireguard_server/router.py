@@ -21,7 +21,7 @@ async def create_interface(network_size: int = None ,api_key: APIKey = Depends(a
     except Exception as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
 
-@router.delete("/$interface_name", tags=["interface"])
+@router.delete("/{interface_name}", tags=["interface"])
 async def delete_interface(interface_name: str, api_key: APIKey = Depends(api_key_auth)):
     interfaces = manager.interfaces
     for interface in interfaces:
@@ -34,7 +34,7 @@ async def delete_interface(interface_name: str, api_key: APIKey = Depends(api_ke
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Interface not found")
 
 
-@router.get("/$interface_name/peers", tags=["interface"])
+@router.get("/{interface_name}/peers", tags=["interface"])
 async def get_interface_peers(interface_name: str, api_key: APIKey = Depends(api_key_auth)):
     interfaces = manager.interfaces
     for interface in interfaces:
@@ -43,7 +43,7 @@ async def get_interface_peers(interface_name: str, api_key: APIKey = Depends(api
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Interface not found")
 
 
-@router.get("/$interface_name/peer/$peer_name/config", tags=["interface"])
+@router.get("/{interface_name}/peer/{peer_name}/config", tags=["interface"])
 async def get_peer_config(interface_name: str, peer_name: str, api_key: APIKey = Depends(api_key_auth)):
     interfaces = manager.interfaces
     for interface in interfaces:
@@ -55,7 +55,7 @@ async def get_peer_config(interface_name: str, peer_name: str, api_key: APIKey =
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Interface not found")
 
 
-@router.post("/$interface_name/peer", tags=["interface"])
+@router.post("/{interface_name}/peer", tags=["interface"])
 async def create_peer(interface_name: str, peer_name: str, api_key: APIKey = Depends(api_key_auth)):
     interfaces = manager.interfaces
     for interface in interfaces:
@@ -68,7 +68,7 @@ async def create_peer(interface_name: str, peer_name: str, api_key: APIKey = Dep
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Interface not found")
 
 
-@router.patch("/$interface_name/peer/$peer_name", tags=["interface"])
+@router.patch("/{interface_name}/peer/{peer_name}", tags=["interface"])
 async def update_peer(interface_name: str, peer_name: str, name: str, api_key: APIKey = Depends(api_key_auth)):
     interfaces = manager.interfaces
     for interface in interfaces:
@@ -84,7 +84,7 @@ async def update_peer(interface_name: str, peer_name: str, name: str, api_key: A
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Peer not found")
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Interface not found")
 
-@router.delete("/$interface_name/peer/$peer_name", tags=["interface"])
+@router.delete("/{interface_name}/peer/{peer_name}", tags=["interface"])
 async def delete_peer(interface_name: str, peer_name: str, api_key: APIKey = Depends(api_key_auth)):
     interfaces = manager.interfaces
     for interface in interfaces:
