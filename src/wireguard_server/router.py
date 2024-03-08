@@ -50,7 +50,7 @@ async def get_peer_config(interface_name: str, peer_name: str, api_key: APIKey =
         if interface.name == interface_name:
             for peer in interface.peers:
                 if peer.name == peer_name:
-                    return peer.generate_interface_config()
+                    return {'config': interface.generate_peer_config(peer)}
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Peer not found")
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Interface not found")
 
