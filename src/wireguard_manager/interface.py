@@ -13,6 +13,10 @@ from exceptions import TemplateError
 
 
 class WGInterface(WGUtilsMixin):
+    """
+    Implementation of wireguard interface
+    """
+
     def __init__(self,
                  interface_name: str = None,
                  address: ipaddress.IPv4Network | str = None,
@@ -23,6 +27,20 @@ class WGInterface(WGUtilsMixin):
                  post_down_commands: list[str] = None,
                  peers: list[WGPeer] = None,
                  config_dir: Path | str = None) -> None:
+        """
+        Interface initialization.
+        Args:
+            interface_name(str): Name of wireguard interface.
+            address(IPv4Network): Interface subnetwork.
+            listen_port(int): Port allocated for interface.
+            private_key(X25519PrivateKey): Interface private key.
+            mtu(int): Interface MTU.
+            post_up_commands(list[str]): Interface post up commands.
+            post_down_commands(list[str]): Interface post down commands.
+            peers(WGPeer): list of peers associated with initializing interface
+            config_dir(Path): Directory, contains interfaces configurations.
+
+        """
         self.name = interface_name
         if isinstance(address, str):
             address = ipaddress.ip_network(address, strict=False)
@@ -45,6 +63,15 @@ class WGInterface(WGUtilsMixin):
 
     @classmethod
     def load_existing(cls, configuration_path: Path | str) -> "WGInterface":
+        """
+        Create interface object from configuration file.
+        Args:
+            configuration_path(Path | str): Path to configuration to load.
+
+        Returns:
+            WGInterface: interface loaded from config file.
+
+        """
         return load_config(configuration_path)
 
     @classmethod
@@ -55,16 +82,36 @@ class WGInterface(WGUtilsMixin):
                    mtu: int = None,
                    post_up_command_templates: list[str] = None,
                    post_down_command_templates: list[str] = None) -> "WGInterface":
+        """
+        Create new interface, which not conflict with others, with given size of subnetwork.
+        Args:
+            prefix(str): Name prefix.
+            network_prefix: Interface subnetwork size.
+            config_dir(Path): Directory, contains interfaces configurations.
+            mtu(int): interface MTU
+            post_up_command_templates(list[str]): Templates for post up commands(will be filled with right values).
+            post_down_command_templates: Templates for post down commands(will be filled with right values).
+
+        Returns:
+            WGInterface: New interface.
+
+        """
         return create_new_interface(prefix, network_prefix, config_dir, mtu, post_up_command_templates,
                                     post_down_command_templates)
 
     def delete_config(self) -> None:
+        """
+        Gracefully remove interface.
+
+        Raises:
+            FileNotFoundError: if configuration file does not exist
+        """
         config_path = os.path.join(self.config_dir, f'{self.name}.conf')
         self.stop_interface()
         try:
             os.remove(config_path)
         except FileNotFoundError:
-            raise FileExistsError(f'Configuration file {config_path} does not exists')
+            raise FileNotFoundError(f'Configuration file {config_path} does not exist')
 
     def convert_command_templates(self, command_templates: list[str]) -> tuple[str, ...]:
         commands = []
@@ -159,9 +206,11 @@ class WGInterface(WGUtilsMixin):
     def delete_peer(self, peer):
         self.peers.remove(peer)
 
-    def create_peer(self) -> WGPeer:
+    def create_peer(self, name:str = None) -> WGPeer:
         allowed_ips = min(self._free_ips())
-        peer = WGPeer(allowed_ips=allowed_ips)
+        if not allowed_ips:
+            raise Exception('No free IPs')
+        peer = WGPeer(allowed_ips=allowed_ips, name=name)
         peer.set_key()
         self.peers.append(peer)
         self.save_config()

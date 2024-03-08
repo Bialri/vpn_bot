@@ -11,17 +11,20 @@ class WGPeer(WGUtilsMixin):
     """
     def __init__(self,
                  allowed_ips: ipaddress.IPv4Network | str = None,
-                 private_key: X25519PrivateKey = None) -> None:
+                 private_key: X25519PrivateKey = None,
+                 name: str = None) -> None:
         """
         Peer initialization.
         Args:
             allowed_ips(IPv4Network | str): Subnetwork available for peer.
             private_key(X25519PrivateKey): Peer private key.
+            name(str): Peer name.
         """
         if isinstance(allowed_ips, str):
             allowed_ips = ipaddress.ip_network(allowed_ips, strict=False)
         self.allowed_ips = allowed_ips
         self.private_key = private_key
+        self.name = name
 
     def generate_interface_config(self, dns: ipaddress.IPv4Address = ipaddress.IPv4Address('1.1.1.1')) -> str:
         """
@@ -72,10 +75,15 @@ class WGPeer(WGUtilsMixin):
             public_key = ''
             private_key = ''
 
+        allowed_ips = ''
         if self.allowed_ips:
             allowed_ips = f'AllowedIPs = {str(self.allowed_ips)}\n'
 
-        config = f'[Peer]\n{public_key}{allowed_ips}{private_key}\n\n'
+        name = ''
+        if self.name:
+            name = f'# Name = {self.name}\n'
+
+        config = f'[Peer]\n{name}\n{public_key}{allowed_ips}{private_key}\n\n'
         return config
 
     @classmethod
@@ -131,6 +139,25 @@ class WGPeer(WGUtilsMixin):
                 return ipaddress.ip_network(value, False)
         return None
 
+    @staticmethod
+    def _name_config(peer_config: str) -> str | None:
+        """
+        Get name from text server side config
+        Args:
+            peer_config(str): Text server side config.
+
+        Returns:
+            str: if name field exists in peer config
+            None: if not exists
+
+        """
+        lines = peer_config.split('\n')
+        for line in lines:
+            if '# Name' in line:
+                value = line.split('= ', 1)[1].rstrip()
+                return value
+        return None
+
     def set_key(self) -> None:
         """
         Set new peer private key
@@ -143,4 +170,5 @@ def peer_from_config(peer_config: str) -> WGPeer:
     peer = WGPeer()
     peer.private_key = peer._private_key_config(peer_config)
     peer.allowed_ips = peer._allowed_ips_config(peer_config)
+    peer.name = peer._name_config(peer_config)
     return peer
