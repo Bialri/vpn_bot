@@ -1,23 +1,47 @@
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
+import aiohttp
+
+from src.bot.config import Config
 
 
-def get_profiles_keyboard(profiles: list['VPNProfile']) -> InlineKeyboardMarkup:
+async def get_profiles_keyboard(interfaces: list['VPNInterface']) -> InlineKeyboardMarkup:
     profile_keyboard = []
+    profiles = []
+    for interface in interfaces:
+        url = f'http://{interface.server}/interface/{interface.interface_name}/peers'
+        headers = {"X-API-Key": Config.API_TOKEN}
+        async with aiohttp.ClientSession() as request_session:
+            async with request_session.get(url=url, headers=headers) as response:
+                new_profiles = [(interface.interface_name, profile) for profile in (await response.json())]
+                profiles = profiles + new_profiles
     profile_iterator = iter(profiles)
-    while(True):
+    while (True):
         try:
             keyboard_row = []
             first_profile = next(profile_iterator)
             keyboard_row.append(
-                InlineKeyboardButton(text=first_profile.name, callback_data=f'profile_{first_profile.id}'))
+                InlineKeyboardButton(text=first_profile[1], callback_data=f'profile_{first_profile[0]}_{first_profile[1]}'))
             second_profile = next(profile_iterator)
             keyboard_row.append(
-                InlineKeyboardButton(text=second_profile.name, callback_data=f'profile_{second_profile.id}'))
+                InlineKeyboardButton(text=second_profile[1], callback_data=f'profile_{second_profile[0]}_{second_profile[1]}'))
         except StopIteration:
             break
         finally:
             profile_keyboard.append(keyboard_row)
 
-    create_button = [InlineKeyboardButton(text='Создать новый профиль', callback_data='create_profile')]
+    create_button = [InlineKeyboardButton(text='Создать новый профиль', callback_data='createprofile')]
     profile_keyboard.append(create_button)
     return InlineKeyboardMarkup(inline_keyboard=profile_keyboard)
+
+
+def get_profile_keyboard(peer_name):
+    keyboard = [
+        [InlineKeyboardButton(text="Получить QR код", callback_data=f'qr_{peer_name}'),
+         InlineKeyboardButton(text="Получить файл конфигурации", callback_data=f'config_{peer_name}')],
+        [InlineKeyboardButton(text="Удалить профиль", callback_data=f'delete_{peer_name}')]
+    ]
+    return InlineKeyboardMarkup(inline_keyboard=keyboard)
+
+
+def get_return_button(callback_data):
+    return InlineKeyboardMarkup(inline_keyboard=[[InlineKeyboardButton(text="Назад",callback_data=callback_data)]])

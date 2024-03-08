@@ -2,7 +2,7 @@ from datetime import datetime, date
 
 from sqlalchemy.orm import relationship, Mapped, mapped_column
 
-from src.database import Base
+from src.bot.database import Base
 
 
 class User(Base):
@@ -13,4 +13,4 @@ class User(Base):
     is_active: Mapped[bool] = mapped_column(default=False)
     is_superuser: Mapped[bool] = mapped_column(default=False)
     subscription_till: Mapped[date] = mapped_column(default=date.today())
-    vpn_profiles: Mapped[list['VPNProfile']] = relationship(back_populates='owner', lazy='joined')
+    vpn_interfaces: Mapped[list['VPNInterface']] = relationship(back_populates='owner', lazy='joined')

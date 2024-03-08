@@ -1,7 +1,7 @@
 from sqlalchemy import select
 
-from src.database import session_maker
-from src.auth.models import User
+from src.bot.database import session_maker
+from src.bot.auth.models import User
 
 class Identificator:
     @classmethod

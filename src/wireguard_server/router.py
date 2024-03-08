@@ -4,7 +4,7 @@ from auth import api_key_auth
 
 from manager import manager
 
-router = APIRouter(prefix='/interface')
+router = APIRouter(prefix='api/v1/interface')
 
 
 @router.get("/", tags=["interface"])
@@ -40,7 +40,7 @@ async def get_interface_peers(interface_name: str, api_key: APIKey = Depends(api
     for interface in interfaces:
         if interface.name == interface_name:
             return [peer.name for peer in interface.peers]
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Interface not found")
+    raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Interface not found")
 
 
 @router.get("/{interface_name}/peer/{peer_name}/config", tags=["interface"])
@@ -52,7 +52,7 @@ async def get_peer_config(interface_name: str, peer_name: str, api_key: APIKey =
                 if peer.name == peer_name:
                     return {'config': interface.generate_peer_config(peer)}
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Peer not found")
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Interface not found")
+    raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Interface not found")
 
 
 @router.post("/{interface_name}/peer", tags=["interface"])
@@ -65,7 +65,7 @@ async def create_peer(interface_name: str, peer_name: str, api_key: APIKey = Dep
                 return {'config': interface.generate_peer_config(peer)}
             except Exception as e:
                 raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Interface not found")
+    raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Interface not found")
 
 
 @router.patch("/{interface_name}/peer/{peer_name}", tags=["interface"])
@@ -82,7 +82,7 @@ async def update_peer(interface_name: str, peer_name: str, name: str, api_key: A
                     except Exception as e:
                         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Peer not found")
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Interface not found")
+    raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Interface not found")
 
 @router.delete("/{interface_name}/peer/{peer_name}", tags=["interface"])
 async def delete_peer(interface_name: str, peer_name: str, api_key: APIKey = Depends(api_key_auth)):
@@ -97,6 +97,6 @@ async def delete_peer(interface_name: str, peer_name: str, api_key: APIKey = Dep
                     except Exception as e:
                         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Peer not found")
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Interface not found")
+    raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Interface not found")
 
 
