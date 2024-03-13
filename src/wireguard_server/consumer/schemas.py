@@ -8,4 +8,3 @@ class StateEnum(Enum):
 class ChangeStateMessage(BaseModel):
     interface: str
     status: StateEnum
-    hostname: str
