@@ -12,3 +12,14 @@ services:
       - ./docker/postgres/:/var/lib/postgresql/data
     ports:
       - 5432:5432
+
+  rabbitmq:
+    image: rabbitmq:3-management
+    environment:
+      - RABBITMQ_SERVER_ADDITIONAL_ERL_ARGS=-rabbitmq_management load_definitions "/opt/definitions.json"
+    volumes:
+      - ./docker/rabbitmq:/var/lib/rabbitmq:rw
+      - ./rabbitmq_conf/definitions.json:/opt/definitions.json:ro
+    ports:
+      - 15672:15672
+      - 5672:5672
