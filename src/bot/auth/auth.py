@@ -1,4 +1,5 @@
 from sqlalchemy import select
+from sqlalchemy.orm import Session
 
 from src.bot.database import session_maker
 from src.bot.auth.models import User
@@ -13,9 +14,7 @@ class Identificator:
             return True
 
     @classmethod
-    def create_user(cls, id: int) -> User:
-        with session_maker() as session:
-            new_user = User(id=id)
-            session.add(new_user)
-            session.commit()
-            return new_user
+    def create_user(cls, id: int, session: Session) -> User:
+        new_user = User(id=id)
+        session.add(new_user)
+        return new_user

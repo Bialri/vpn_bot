@@ -4,7 +4,7 @@ from auth import api_key_auth
 
 from manager import manager
 
-router = APIRouter(prefix='api/v1/interface')
+router = APIRouter(prefix='/api/v1/interface')
 
 
 @router.get("/", tags=["interface"])
@@ -98,5 +98,17 @@ async def delete_peer(interface_name: str, peer_name: str, api_key: APIKey = Dep
                         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Peer not found")
     raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Interface not found")
+
+@router.post("/{interface_name}/", tags=["interface"])
+async def change_interface_status(interface_name: str, interface_status: bool, api_key: APIKey = Depends(api_key_auth)):
+    interfaces = manager.interfaces
+    for interface in interfaces:
+        if interface.name == interface_name:
+            if interface_status:
+                interface.run_interface()
+                return {"status": "success"}
+            else:
+                interface.stop_interface()
+                return {"status": "success"}
 
 

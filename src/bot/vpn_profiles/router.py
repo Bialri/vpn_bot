@@ -3,109 +3,195 @@ from aiogram.types import Message, CallbackQuery, BufferedInputFile
 from aiogram.fsm.state import StatesGroup, State
 from aiogram.fsm.context import FSMContext
 import qrcode
-import aiohttp
 import io
+from datetime import date
 
 from src.bot.database import session_maker
 from src.bot.auth.models import User
-from src.bot.vpn_profiles.models import VPNInterface
-from src.bot.vpn_profiles.keyboards import get_profiles_keyboard, get_profile_keyboard, get_return_button
-from src.bot.config import Config
+from src.bot.vpn_profiles.models import VPNInterface, Server
+from src.bot.vpn_profiles.keyboards import (get_profiles_keyboard, get_profile_keyboard, get_return_button,
+                                            get_delete_confirm_keyboard, get_choice_country_keyboard)
 from src.bot.bot import bot
+from src.bot.vpn_profiles.requester import BotRequesterSession
 
 router = Router(name='vpn_profiles')
 
 
+def subscription_validation(user_id):
+    with session_maker() as session:
+        user = session.get(User, user_id)
+        return user.subscription_till < date.today()
+
+
 @router.callback_query(lambda callback_query: callback_query.data == "profiles")
 async def callback_profiles(callback_query: CallbackQuery):
+    if subscription_validation(callback_query.from_user.id):
+        await callback_query.message.answer("Срок подписки истёк, чтобы востановить доступ, продлите её.")
+        return
+
     with session_maker() as session:
-        user = session.get(User, callback_query.message.from_user.id)
+        user = session.get(User, callback_query.from_user.id)
         profile_keyboard = await get_profiles_keyboard(user.vpn_interfaces)
-        await bot.delete_message(callback_query.message.chat.id,callback_query.message.message_id)
+        await bot.delete_message(callback_query.message.chat.id, callback_query.message.message_id)
         await bot.send_message(callback_query.message.chat.id, text='Ваши профили:', reply_markup=profile_keyboard)
+
 
 @router.message(F.text.lower() == "мои vpn профили")
 async def callback_profiles(message: Message):
+    if subscription_validation(message.from_user.id):
+        await message.answer("Срок подписки истёк, чтобы востановить доступ, продлите её.")
+        return
+
     with session_maker() as session:
         user = session.get(User, message.from_user.id)
         profile_keyboard = await get_profiles_keyboard(user.vpn_interfaces)
         await message.answer(text='Ваши профили:', reply_markup=profile_keyboard)
-
+        return
 
 
 @router.callback_query(lambda callback_query: callback_query.data.split('_')[0] == 'profile')
 async def profile(callback: CallbackQuery):
+    if subscription_validation(callback.from_user.id):
+        await callback.message.answer("Срок подписки истёк, чтобы востановить доступ, продлите её.")
+        return
+
     await bot.delete_message(callback.message.chat.id, callback.message.message_id)
     data = callback.data.split('_')[1:]
-    keyboard = get_profile_keyboard(f'{data[0]}_{data[1]}')
-    await callback.message.answer(text='Профиль', reply_markup=keyboard)
+    keyboard = get_profile_keyboard(data[0], data[1])
+    await callback.message.answer(text=f'Профиль {data[1]}', reply_markup=keyboard)
 
 
 @router.callback_query(lambda callback_query: callback_query.data.split('_')[0] == 'qr')
 async def get_profile_qr(callback: CallbackQuery):
+    if subscription_validation(callback.from_user.id):
+        await callback.message.answer("Срок подписки истёк, чтобы востановить доступ, продлите её.")
+        return
+
     await bot.delete_message(callback.message.chat.id, callback.message.message_id)
     data = callback.data.split('_')[1:]
 
-    async with aiohttp.ClientSession() as request_session:
-        with session_maker() as session:
-            user = session.get(User, callback.message.from_user.id)
-            interface = session.query(VPNInterface).where(VPNInterface.interface_name == data[0]).first()
-        url = f'http://{interface.server}/interface/{interface.interface_name}/peer/{data[1]}/config'
-        headers = {"X-API-Key": Config.API_TOKEN}
-        async with request_session.get(url=url, headers=headers) as response:
-            json_response = await response.json()
-        qr = qrcode.make(json_response['config'])
-        buf = io.BytesIO()
-        qr.save(buf)
-        buf.seek(0)
-        buf_file = BufferedInputFile(buf.read(), 'config.conf')
-        keyboard = get_return_button("profiles")
-        await bot.send_photo(callback.message.chat.id, buf_file, reply_markup=keyboard)
+    with session_maker() as session:
+        user = session.query(User).where(User.id == callback.from_user.id).first()
+        print(user.id)
+        interface = session.query(VPNInterface).where(VPNInterface.interface_name == data[0],
+                                                      VPNInterface.owner_id == user.id).first()
+        async with BotRequesterSession(interface.server.address) as request_session:
+            url = f'/api/v1/interface/{interface.interface_name}/peer/{data[1]}/config'
+            async with request_session.get(url=url) as response:
+                json_response = await response.json()
+
+            qr = qrcode.make(json_response['config'])
+            buf = io.BytesIO()
+            qr.save(buf)
+            buf.seek(0)
+            buf_file = BufferedInputFile(buf.read(), 'config.conf')
+            keyboard = get_return_button(f"profile_{data[0]}_{data[1]}")
+            await bot.send_photo(callback.message.chat.id, buf_file, reply_markup=keyboard)
 
 
 @router.callback_query(lambda callback_query: callback_query.data.split('_')[0] == 'config')
 async def get_profile_config(callback: CallbackQuery):
+    if subscription_validation(callback.from_user.id):
+        await callback.message.answer("Срок подписки истёк, чтобы востановить доступ, продлите её.")
+        return
+
     await bot.delete_message(callback.message.chat.id, callback.message.message_id)
     data = callback.data.split('_')[1:]
 
-    async with aiohttp.ClientSession() as request_session:
-        with session_maker() as session:
-            user = session.get(User, callback.message.from_user.id)
-            interface = session.query(VPNInterface).where(VPNInterface.interface_name == data[0]).first()
-        url = f'http://{interface.server}/interface/{interface.interface_name}/peer/{data[1]}/config'
-        headers = {"X-API-Key": Config.API_TOKEN}
-        async with request_session.get(url=url, headers=headers) as response:
-            json_response = await response.json()
-        buf_file = BufferedInputFile(json_response['config'].encode('utf-8'), 'config.conf')
-        await bot.send_document(callback.message.chat.id, buf_file)
+    with session_maker() as session:
+        user = session.query(User).where(User.id == callback.from_user.id).first()
+        interface = session.query(VPNInterface).where(VPNInterface.interface_name == data[0],
+                                                      VPNInterface.owner == user).first()
+
+        async with BotRequesterSession(host=interface.server.address) as request_session:
+            url = f'/api/v1/interface/{interface.interface_name}/peer/{data[1]}/config'
+            async with request_session.get(url=url) as response:
+                json_response = await response.json()
+            buf_file = BufferedInputFile(json_response['config'].encode('utf-8'), 'config.conf')
+            keyboard = get_return_button(f"profile_{data[0]}_{data[1]}")
+            await bot.send_document(callback.message.chat.id, buf_file, reply_markup=keyboard)
 
 
 class CreateProfile(StatesGroup):
     chosing_profile_name = State()
+    chosing_profile_country = State()
 
 
 @router.callback_query(lambda callback_query: callback_query.data == 'createprofile')
 async def request_profile_name(callback: CallbackQuery, state: FSMContext):
+    if subscription_validation(callback.from_user.id):
+        await callback.message.answer("Срок подписки истёк, чтобы востановить доступ, продлите её.")
+        return
+
     await bot.delete_message(callback.message.chat.id, callback.message.message_id)
     await bot.send_message(callback.message.chat.id, 'Введите имя профиля')
     await state.set_state(CreateProfile.chosing_profile_name)
 
 
 @router.message(CreateProfile.chosing_profile_name)
-async def create_profile(message: Message, state: FSMContext):
-    await state.update_data(profile_name=message.text)
+async def request_profile_country(message: Message, state: FSMContext):
+    if subscription_validation(message.from_user.id):
+        await message.answer("Срок подписки истёк, чтобы востановить доступ, продлите её.")
+        return
+    await state.set_data({'name': message.text})
 
-    async with aiohttp.ClientSession() as request_session:
-        with session_maker() as session:
-            user = session.get(User, message.from_user.id)
-            interface = session.query(VPNInterface).where(VPNInterface.owner == user).first()
-            url = f'http://{interface.server}/interface/{interface.interface_name}/peer'
-            headers = {"X-API-Key": Config.API_TOKEN}
-            data = {'peer_name': message.text}
-            async with request_session.post(url=url, headers=headers, params=data) as response:
-                print(await response.text())
+    with session_maker() as session:
+        user = session.query(User).where(User.id == message.from_user.id).first()
+        interfaces = session.query(VPNInterface).where(VPNInterface.owner == user).all()
+        keyboard = get_choice_country_keyboard(interfaces)
+    await message.answer("Выберите страну", reply_markup=keyboard)
+    await state.set_state(CreateProfile.chosing_profile_country)
+
+
+# TODO: fix post request
+@router.callback_query(CreateProfile.chosing_profile_country)
+async def create_profile(callback: CallbackQuery, state: FSMContext):
+    if subscription_validation(callback.from_user.id):
+        await callback.message.answer("Срок подписки истёк, чтобы востановить доступ, продлите её.")
+        return
+
+    data = callback.data.split("_")[1:]
+    profile_name = (await state.get_data())['name']
+    async with BotRequesterSession(host=data[0]) as request_session:
+        url = f'/api/v1/interface/{data[1]}/peer'
+        data = {'peer_name': profile_name}
+        async with request_session.post(url=url, params=data) as response:
+            if response.status != 200:
+                await callback.message.answer("По что-то пошло не так")
+            else:
+                await callback.message.answer("Профиль успешно создан")
+        await state.clear()
+        await bot.delete_message(callback.message.chat.id, callback.message.message_id)
+
+
+@router.callback_query(lambda callback_query: callback_query.data.split("_")[0] == 'delete')
+async def delete_confirm_request_profile(callback_query: CallbackQuery):
+    if subscription_validation(callback_query.from_user.id):
+        await callback_query.message.answer("Срок подписки истёк, чтобы востановить доступ, продлите её.")
+        return
+
+    data = callback_query.data.split('_')[1:]
+    keyboard = get_delete_confirm_keyboard(data)
+    await callback_query.message.answer(text="Подтвердите действие", reply_markup=keyboard)
+    await bot.delete_message(callback_query.message.chat.id, callback_query.message.message_id)
+
+
+@router.callback_query(lambda callback_query: callback_query.data.split("_")[0] == 'confirmDelete')
+async def delete_profile(callback_query: CallbackQuery):
+    if subscription_validation(callback_query.from_user.id):
+        await callback_query.message.answer("Срок подписки истёк, чтобы востановить доступ, продлите её.")
+        return
+
+    data = callback_query.data.split('_')[1:]
+    with session_maker() as session:
+        user = session.get(User, callback_query.from_user.id)
+        interface = session.query(VPNInterface).where(VPNInterface.owner == user).first()
+        async with BotRequesterSession(host=interface.server.address) as request_session:
+            url = f'/api/v1/interface/{interface.interface_name}/peer/{data[1]}'
+            async with request_session.delete(url=url) as response:
                 if response.status != 200:
-                    await message.answer("По пизде что-то пошло")
+                    await callback_query.message.answer("По что-то пошло не так")
                 else:
-                    await message.answer("Профиль успешно создан")
-            await state.clear()
+                    await callback_query.message.answer("Профиль успешно удалён")
+
+    await bot.delete_message(callback_query.message.chat.id, callback_query.message.message_id)
