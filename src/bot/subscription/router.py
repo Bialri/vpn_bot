@@ -4,6 +4,9 @@ from aiogram import Router, F
 from aiogram.types import Message, CallbackQuery
 import random
 import aiohttp
+import pika
+import json
+import datetime
 
 from src.bot.database import session_maker
 from src.bot.auth.auth import User
@@ -38,6 +41,7 @@ async def subscription_choice(callback: CallbackQuery):
     await callback.message.answer(text="Выберите срок подписки", reply_markup=keyboard)
 
 
+#TODO: REFACTOR
 @router.callback_query(lambda callback_query: callback_query.data.split('_')[0] == "subscribeBuy")
 async def subscription_buy(callback: CallbackQuery):
     data = callback.data.split('_')[1:]
@@ -50,14 +54,15 @@ async def subscription_buy(callback: CallbackQuery):
         subs_ext = relativedelta(months=int(data[0]))
         with session_maker() as session:
             user = session.query(User).where(User.id == callback.from_user.id).first()
+            user_old_subs = user.subscription_till
             user.subscription_till = user.subscription_till + subs_ext
             session.commit()
-
+            last_action = user.last_action
         await callback.message.answer(text='Оплата успешна')
 
-        if user.last_action is None:
+        if last_action is None:
             with session_maker() as session:
-                user = session.query(User).where(User.id == callback.from_user.id)
+                user = session.query(User).where(User.id == callback.from_user.id).first()
                 servers = session.query(Server.country).distinct().all()
                 async with aiohttp.ClientSession() as request_session:
                     for server in servers:
@@ -71,14 +76,28 @@ async def subscription_buy(callback: CallbackQuery):
                                 response_data = await response.json()
                                 if response.status != 200:
                                     session.flush()
+                                interface = VPNInterface(interface_name=response_data['interface_name'],
+                                                         server=country_server,
+                                                         owner=user)
+                                session.add(interface)
                         except aiohttp.client_exceptions.ClientConnectorError as e:
                             session.flush()
-
-                        interface = VPNInterface(interface_name=response_data['interface_name'],
-                                                 server=country_server,
-                                                 owner=user)
-                        session.add(interface)
-                        session.commit()
+                user.last_action = datetime.datetime.now()
+                session.commit()
+        elif user_old_subs < date.today():
+            connection = pika.BlockingConnection(Config.PIKA_PARAMETRS)
+            channel = connection.channel()
+            with session_maker() as session:
+                user = session.query(User).where(User.id == callback.from_user.id).first()
+                interfaces = session.query(VPNInterface).where(VPNInterface.owner == user).all()
+                for interface in interfaces:
+                    query = {
+                        'interface': f'{interface.interface_name}',
+                        'status': "running"
+                    }
+                    channel.basic_publish(exchange='route',
+                                          routing_key=interface.server.address,
+                                          body=json.dumps(query))
 
     else:
         await callback.message.answer(text='Платёж отклонён')
