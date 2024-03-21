@@ -1,9 +1,7 @@
-from sqlalchemy import select
 from sqlalchemy.orm import Session
-import sys
-sys.path.append('..')
-from database import session_maker
-from auth.models import User
+
+from src.database import session_maker
+from src.models import User
 
 class Identificator:
     @classmethod

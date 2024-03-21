@@ -1,7 +1,5 @@
-from fastapi import FastAPI, Depends
-from fastapi.openapi.models import APIKey
+from fastapi import FastAPI
 
-from auth import api_key_auth
 from router import router
 app = FastAPI()
 

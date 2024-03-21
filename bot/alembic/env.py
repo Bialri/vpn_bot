@@ -5,11 +5,12 @@ from sqlalchemy import pool
 
 from alembic import context
 
-
-from src.bot.config import Config
-from src.bot.database import Base
-from src.bot.vpn_profiles.models import VPNInterface, Server
-from src.bot.auth.models import User
+import sys
+sys.path.append('..')
+from src.config import Config
+from src.database import Base
+from src.vpn_profiles.models import VPNInterface, Server
+from src.auth.models import User
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.

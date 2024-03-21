@@ -9,6 +9,7 @@ import json
 import datetime
 import sys
 sys.path.append('..')
+
 from database import session_maker
 from auth.auth import User
 from vpn_profiles.models import Server, VPNInterface
@@ -51,19 +52,12 @@ async def subscription_buy(callback: CallbackQuery):
     keyboard = get_subscription_payment_keyboard("Оплатить", payment_url)
     await callback.message.answer(text=f"Оплатите подписку на {data[0]} Месяцев", reply_markup=keyboard)
     status = await check_payment_subscription(payment.id)
+
     if status:
-        subs_ext = relativedelta(months=int(data[0]))
         with session_maker() as session:
             user = session.query(User).where(User.id == callback.from_user.id).first()
-            user_old_subs = user.subscription_till
-            user.subscription_till = user.subscription_till + subs_ext
-            session.commit()
-            last_action = user.last_action
-        await callback.message.answer(text='Оплата успешна')
 
-        if last_action is None:
-            with session_maker() as session:
-                user = session.query(User).where(User.id == callback.from_user.id).first()
+            if not user.last_action or not user.interfaces:
                 servers = session.query(Server.country).distinct().all()
                 async with aiohttp.ClientSession() as request_session:
                     for server in servers:
@@ -83,13 +77,10 @@ async def subscription_buy(callback: CallbackQuery):
                                 session.add(interface)
                         except aiohttp.client_exceptions.ClientConnectorError as e:
                             session.flush()
-                user.last_action = datetime.datetime.now()
-                session.commit()
-        elif user_old_subs < date.today():
-            connection = pika.BlockingConnection(Config.PIKA_PARAMETRS)
-            channel = connection.channel()
-            with session_maker() as session:
-                user = session.query(User).where(User.id == callback.from_user.id).first()
+
+            elif user.subscription_till < date.today() and user.vpn_interfaces:
+                connection = pika.BlockingConnection(Config.PIKA_PARAMETRS)
+                channel = connection.channel()
                 interfaces = session.query(VPNInterface).where(VPNInterface.owner == user).all()
                 for interface in interfaces:
                     query = {
@@ -99,6 +90,14 @@ async def subscription_buy(callback: CallbackQuery):
                     channel.basic_publish(exchange='route',
                                           routing_key=interface.server.address,
                                           body=json.dumps(query))
+
+            user.last_action = datetime.datetime.now()
+            subs_ext = relativedelta(months=int(data[0]))
+            user.subscription_till = user.subscription_till + subs_ext
+            session.commit()
+
+        await callback.message.answer(text='Оплата успешна')
+
 
     else:
         await callback.message.answer(text='Платёж отклонён')

@@ -4,9 +4,10 @@
     <content url="file://$MODULE_DIR$">
       <sourceFolder url="file://$MODULE_DIR$/src/bot" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/src/wireguard_server" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/bot/src" isTestSource="false" />
       <excludeFolder url="file://$MODULE_DIR$/.venv" />
     </content>
-    <orderEntry type="jdk" jdkName="Python 3.10.12 WSL (Ubuntu): (/root/vpn_bot/src/wireguard_server/.venv/bin/python3)" jdkType="Python SDK" />
+    <orderEntry type="jdk" jdkName="Python 3.11 (Wireguard_control) (2)" jdkType="Python SDK" />
     <orderEntry type="sourceFolder" forTests="false" />
   </component>
   <component name="PackageRequirementsSettings">

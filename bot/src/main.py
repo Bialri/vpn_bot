@@ -5,6 +5,7 @@ import sys
 from dispatcher import dp
 from bot import bot
 
+print(sys.path)
 
 
 async def main():

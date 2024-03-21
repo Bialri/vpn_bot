@@ -10,14 +10,14 @@ router = APIRouter(prefix='/api/v1/interface')
 @router.get("/", tags=["interface"])
 async def get_interfaces(api_key: APIKey = Depends(api_key_auth)):
     interfaces = manager.interfaces
-    return [interface.name for interface in interfaces]
+    return [interface.config.name for interface in interfaces]
 
 @router.post("/", tags=["interface"])
 async def create_interface(network_size: int = None ,api_key: APIKey = Depends(api_key_auth)):
     try:
-        interface = manager.create_new_interface(network_size)
+        interface = manager.generate_new_interface(network_prefix=network_size)
         return {"status": "success",
-                "interface_name": interface.name}
+                "interface_name": interface.config.name}
     except Exception as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
 
@@ -25,9 +25,9 @@ async def create_interface(network_size: int = None ,api_key: APIKey = Depends(a
 async def delete_interface(interface_name: str, api_key: APIKey = Depends(api_key_auth)):
     interfaces = manager.interfaces
     for interface in interfaces:
-        if interface.name == interface_name:
+        if interface.config.name == interface_name:
             try:
-                manager.delete_interface(interface)
+                interface.delete()
                 return {"status": "success"}
             except Exception as e:
                 raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
@@ -38,8 +38,8 @@ async def delete_interface(interface_name: str, api_key: APIKey = Depends(api_ke
 async def get_interface_peers(interface_name: str, api_key: APIKey = Depends(api_key_auth)):
     interfaces = manager.interfaces
     for interface in interfaces:
-        if interface.name == interface_name:
-            return [peer.name for peer in interface.peers]
+        if interface.config.name == interface_name:
+            return [peer.name for peer in interface.config.peer_configs]
     raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Interface not found")
 
 
@@ -47,8 +47,8 @@ async def get_interface_peers(interface_name: str, api_key: APIKey = Depends(api
 async def get_peer_config(interface_name: str, peer_name: str, api_key: APIKey = Depends(api_key_auth)):
     interfaces = manager.interfaces
     for interface in interfaces:
-        if interface.name == interface_name:
-            for peer in interface.peers:
+        if interface.config.name == interface_name:
+            for peer in interface.config.peer_configs:
                 if peer.name == peer_name:
                     return {'config': interface.generate_peer_config(peer)}
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Peer not found")
@@ -72,8 +72,8 @@ async def create_peer(interface_name: str, peer_name: str, api_key: APIKey = Dep
 async def update_peer(interface_name: str, peer_name: str, name: str, api_key: APIKey = Depends(api_key_auth)):
     interfaces = manager.interfaces
     for interface in interfaces:
-        if interface.name == interface_name:
-            for peer in interface.peers:
+        if interface.config.name == interface_name:
+            for peer in interface.peer_configs:
                 if peer.name == peer_name:
                     try:
                         peer.name = name
@@ -88,8 +88,8 @@ async def update_peer(interface_name: str, peer_name: str, name: str, api_key: A
 async def delete_peer(interface_name: str, peer_name: str, api_key: APIKey = Depends(api_key_auth)):
     interfaces = manager.interfaces
     for interface in interfaces:
-        if interface.name == interface_name:
-            for peer in interface.peers:
+        if interface.config.name == interface_name:
+            for peer in interface.peer_configs:
                 if peer.name == peer_name:
                     try:
                         interface.delete_peer(peer)
@@ -103,7 +103,7 @@ async def delete_peer(interface_name: str, peer_name: str, api_key: APIKey = Dep
 async def change_interface_status(interface_name: str, interface_status: bool, api_key: APIKey = Depends(api_key_auth)):
     interfaces = manager.interfaces
     for interface in interfaces:
-        if interface.name == interface_name:
+        if interface.config.name == interface_name:
             if interface_status:
                 interface.run_interface()
                 return {"status": "success"}
