@@ -7,10 +7,10 @@ from alembic import context
 
 import sys
 sys.path.append('..')
-from src.config import Config
-from src.database import Base
-from src.vpn_profiles.models import VPNInterface, Server
-from src.auth.models import User
+from bot.src.config import Config
+from bot.src.database import Base
+from bot.src.vpn_profiles.models import VPNInterface, Server
+from bot.src.auth.models import User
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.

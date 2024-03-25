@@ -13,7 +13,8 @@ from database import session_maker
 from auth.models import User
 from vpn_profiles.models import VPNInterface, Server
 from vpn_profiles.keyboards import (get_profiles_keyboard, get_profile_keyboard, get_return_button,
-                                    get_delete_confirm_keyboard, get_choice_country_keyboard)
+                                    get_delete_confirm_keyboard, get_choice_country_keyboard,
+                                    get_cancel_create_button)
 from bot import bot
 from vpn_profiles.requester import BotRequesterSession
 
@@ -110,7 +111,7 @@ async def get_profile_config(callback: CallbackQuery):
             url = f'/api/v1/interface/{interface.interface_name}/peer/{data[1]}/config'
             async with request_session.get(url=url) as response:
                 json_response = await response.json()
-            buf_file = BufferedInputFile(json_response['config'].encode('utf-8'), 'config.conf')
+            buf_file = BufferedInputFile(json_response['config'].encode('utf-8'), f'{interface.interface_name}.conf')
             keyboard = get_return_button(f"profile_{data[0]}_{data[1]}")
             await bot.send_document(callback.message.chat.id, buf_file, reply_markup=keyboard)
 
@@ -120,6 +121,12 @@ class CreateProfile(StatesGroup):
     chosing_profile_country = State()
 
 
+@router.callback_query(lambda callback_query: callback_query.data == 'cancel_creation')
+async def cancel_create_profile(callback: CallbackQuery, state: FSMContext):
+    await state.clear()
+    await bot.delete_message(callback.message.chat.id, callback.message.message_id)
+
+
 @router.callback_query(lambda callback_query: callback_query.data == 'createprofile')
 async def request_profile_name(callback: CallbackQuery, state: FSMContext):
     if subscription_validation(callback.from_user.id):
@@ -127,12 +134,16 @@ async def request_profile_name(callback: CallbackQuery, state: FSMContext):
         return
 
     await bot.delete_message(callback.message.chat.id, callback.message.message_id)
-    await bot.send_message(callback.message.chat.id, 'Введите имя профиля')
+    message = await bot.send_message(callback.message.chat.id, 'Введите имя профиля', reply_markup=get_cancel_create_button())
     await state.set_state(CreateProfile.chosing_profile_name)
+    await state.set_data({'choose_name_message': message})
 
 
 @router.message(CreateProfile.chosing_profile_name)
 async def request_profile_country(message: Message, state: FSMContext):
+    data = await state.get_data()
+    choose_name_message = data['choose_name_message']
+    await bot.edit_message_reply_markup(chat_id=choose_name_message.chat.id, message_id=choose_name_message.message_id)
     if subscription_validation(message.from_user.id):
         await message.answer("Срок подписки истёк, чтобы востановить доступ, продлите её.")
         return

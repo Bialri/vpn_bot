@@ -1,6 +1,9 @@
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 import aiohttp
 import sys
+import flag
+import pycountry
+
 sys.path.append('..')
 from config import Config
 
@@ -13,19 +16,21 @@ async def get_profiles_keyboard(interfaces: list['VPNInterface']) -> InlineKeybo
         headers = {"X-API-Key": Config.API_TOKEN}
         async with aiohttp.ClientSession() as request_session:
             async with request_session.get(url=url, headers=headers) as response:
-                new_profiles = [(interface.interface_name, profile) for profile in (await response.json())]
+                new_profiles = [(interface.interface_name, profile, interface.server.country) for profile in (await response.json())]
                 profiles = profiles + new_profiles
     profile_iterator = iter(profiles)
     while (True):
         try:
             keyboard_row = []
             first_profile = next(profile_iterator)
+            first_flag = flag.flag(first_profile[2])
             keyboard_row.append(
-                InlineKeyboardButton(text=first_profile[1],
+                InlineKeyboardButton(text=f'{first_profile[1]}{first_flag}',
                                      callback_data=f'profile_{first_profile[0]}_{first_profile[1]}'))
             second_profile = next(profile_iterator)
+            second_flag = flag.flag(second_profile[2])
             keyboard_row.append(
-                InlineKeyboardButton(text=second_profile[1],
+                InlineKeyboardButton(text=f'{second_profile[1]}{second_flag}',
                                      callback_data=f'profile_{second_profile[0]}_{second_profile[1]}'))
         except StopIteration:
             break
@@ -51,8 +56,11 @@ def get_profile_keyboard(interface_name, profile_name):
 def get_choice_country_keyboard(interfaces):
     keyboard = []
     for interface in interfaces:
-        keyboard.append([InlineKeyboardButton(text=interface.server.country,
+        country_name = pycountry.countries.get(alpha_2=interface.server.country).name
+        country_flag = flag.flag(interface.server.country)
+        keyboard.append([InlineKeyboardButton(text=f'{country_name}{country_flag}',
                                               callback_data=f'chosenCountry_{interface.server.address}_{interface.interface_name}')])
+    keyboard.append([InlineKeyboardButton(text="Отменить",callback_data='cancel_creation')])
     return InlineKeyboardMarkup(inline_keyboard=keyboard)
 
 
@@ -64,5 +72,12 @@ def get_delete_confirm_keyboard(callback_data):
     keyboard = [
         [InlineKeyboardButton(text="Удалить", callback_data=f'confirmDelete_{callback_data[0]}_{callback_data[1]}')],
         [InlineKeyboardButton(text="Отменить", callback_data=f'profile_{callback_data[0]}_{callback_data[1]}')]
+    ]
+    return InlineKeyboardMarkup(inline_keyboard=keyboard)
+
+
+def get_cancel_create_button():
+    keyboard = [
+        [InlineKeyboardButton(text="Отменить",callback_data='cancel_creation')]
     ]
     return InlineKeyboardMarkup(inline_keyboard=keyboard)

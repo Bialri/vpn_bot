@@ -3,5 +3,5 @@
   <component name="Black">
     <option name="sdkName" value="Python 3.11 (Wireguard_control)" />
   </component>
-  <component name="ProjectRootManager" version="2" project-jdk-name="Python 3.11 (Wireguard_control) (2)" project-jdk-type="Python SDK" />
+  <component name="ProjectRootManager" version="2" project-jdk-name="Python 3.11.0rc1 WSL (Ubuntu): (/root/vpn_bot/bot/.venv/bin/python3)" project-jdk-type="Python SDK" />
 </project>

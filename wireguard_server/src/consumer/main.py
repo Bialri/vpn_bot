@@ -1,10 +1,11 @@
 import pika
-from wireguard_manager.manager import WGManager
+from wireguard_manager import WGManager
 from pathlib import Path
 from schemas import ChangeStateMessage
+from wireguard_server.src.config import DEFAULT_NETWORK_PREFIX
 
 CONFIG_DIR = Path('/etc/wireguard/')
-manager = WGManager(CONFIG_DIR)
+manager = WGManager(DEFAULT_NETWORK_PREFIX, CONFIG_DIR)
 
 
 def on_message(channel, method_frame, header_frame, body):

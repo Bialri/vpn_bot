@@ -3,6 +3,7 @@ from fastapi.openapi.models import APIKey
 from auth import api_key_auth
 
 from manager import manager
+from config import SERVER_ENDPOINT
 
 router = APIRouter(prefix='/api/v1/interface')
 
@@ -27,7 +28,7 @@ async def delete_interface(interface_name: str, api_key: APIKey = Depends(api_ke
     for interface in interfaces:
         if interface.config.name == interface_name:
             try:
-                interface.delete()
+                manager.delete_interface(interface)
                 return {"status": "success"}
             except Exception as e:
                 raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
@@ -50,7 +51,7 @@ async def get_peer_config(interface_name: str, peer_name: str, api_key: APIKey =
         if interface.config.name == interface_name:
             for peer in interface.config.peer_configs:
                 if peer.name == peer_name:
-                    return {'config': interface.generate_peer_config(peer)}
+                    return {'config': interface.generate_peer_config(peer, SERVER_ENDPOINT)}
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Peer not found")
     raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Interface not found")
 
@@ -59,10 +60,11 @@ async def get_peer_config(interface_name: str, peer_name: str, api_key: APIKey =
 async def create_peer(interface_name: str, peer_name: str, api_key: APIKey = Depends(api_key_auth)):
     interfaces = manager.interfaces
     for interface in interfaces:
-        if interface.name == interface_name:
+        if interface.config.name == interface_name:
             try:
                 peer = interface.create_peer(peer_name)
-                return {'config': interface.generate_peer_config(peer)}
+                interface.config.save()
+                return {'config': interface.generate_peer_config(peer,endpoint=SERVER_ENDPOINT)}
             except Exception as e:
                 raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
     raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Interface not found")
@@ -73,12 +75,12 @@ async def update_peer(interface_name: str, peer_name: str, name: str, api_key: A
     interfaces = manager.interfaces
     for interface in interfaces:
         if interface.config.name == interface_name:
-            for peer in interface.peer_configs:
+            for peer in interface.config.peer_configs:
                 if peer.name == peer_name:
                     try:
                         peer.name = name
-                        interface.save_config()
-                        return {'config': interface.generate_peer_config(peer)}
+                        interface.config.save()
+                        return {'config': interface.generate_peer_config(peer, SERVER_ENDPOINT)}
                     except Exception as e:
                         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Peer not found")
@@ -89,10 +91,11 @@ async def delete_peer(interface_name: str, peer_name: str, api_key: APIKey = Dep
     interfaces = manager.interfaces
     for interface in interfaces:
         if interface.config.name == interface_name:
-            for peer in interface.peer_configs:
+            for peer in interface.config.peer_configs:
                 if peer.name == peer_name:
                     try:
-                        interface.delete_peer(peer)
+                        interface.config.peer_configs.remove(peer)
+                        interface.config.save()
                         return {"status": "success"}
                     except Exception as e:
                         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))

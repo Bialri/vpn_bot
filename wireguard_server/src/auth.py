@@ -9,7 +9,7 @@ api_key_header = APIKeyHeader(name="X-API-Key")
 
 
 async def api_key_auth(api_key_header: str = Security(api_key_header)):
-    with open("/root/vpn_bot/src/wireguard_server/api_keys.json", "r") as file:
+    with open("/root/vpn_bot/wireguard_server/src/api_keys.json", "r") as file:
         api_keys = json.load(file)
     key_hashed = hashlib.pbkdf2_hmac("sha256",
                                      api_key_header.encode('utf8'),
