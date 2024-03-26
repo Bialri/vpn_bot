@@ -134,7 +134,8 @@ async def request_profile_name(callback: CallbackQuery, state: FSMContext):
         return
 
     await bot.delete_message(callback.message.chat.id, callback.message.message_id)
-    message = await bot.send_message(callback.message.chat.id, 'Введите имя профиля', reply_markup=get_cancel_create_button())
+    message = await bot.send_message(callback.message.chat.id, 'Введите имя профиля',
+                                     reply_markup=get_cancel_create_button())
     await state.set_state(CreateProfile.chosing_profile_name)
     await state.set_data({'choose_name_message': message})
 
@@ -157,7 +158,6 @@ async def request_profile_country(message: Message, state: FSMContext):
     await state.set_state(CreateProfile.chosing_profile_country)
 
 
-# TODO: fix post request
 @router.callback_query(CreateProfile.chosing_profile_country)
 async def create_profile(callback: CallbackQuery, state: FSMContext):
     if subscription_validation(callback.from_user.id):
@@ -168,8 +168,8 @@ async def create_profile(callback: CallbackQuery, state: FSMContext):
     profile_name = (await state.get_data())['name']
     async with BotRequesterSession(host=data[0]) as request_session:
         url = f'/api/v1/interface/{data[1]}/peer'
-        data = {'peer_name': profile_name}
-        async with request_session.post(url=url, params=data) as response:
+        request_data = {'peer_name': profile_name}
+        async with request_session.post(url=url, json=request_data) as response:
             if response.status != 200:
                 await callback.message.answer("По что-то пошло не так")
             else:

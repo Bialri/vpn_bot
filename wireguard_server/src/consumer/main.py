@@ -34,6 +34,7 @@ def main():
     while(1):
         try:
             channel = connection.channel()
+            print('Connection established')
             break
         except RuntimeError as e:
             print('Connection not established, trying in 5 seconds...')
@@ -41,6 +42,7 @@ def main():
 
     channel.basic_consume('demo', on_message)
     try:
+        print('Waiting for messages.')
         channel.start_consuming()
     except KeyboardInterrupt:
         channel.stop_consuming()

@@ -76,13 +76,13 @@ async def subscription_buy(callback: CallbackQuery):
                                                                 json=request_data) as response:
                                     response_data = await response.json()
                                     if response.status != 200:
-                                        session.flush()
+                                        session.rollback()
                                     interface = VPNInterface(interface_name=response_data['interface_name'],
                                                              server=country_server,
                                                              owner=user)
                                     session.add(interface)
                             except aiohttp.client_exceptions.ClientConnectorError as e:
-                                session.flush()
+                                session.rollback()
                                 raise
 
                 elif user.subscription_till < date.today() and user.vpn_interfaces:

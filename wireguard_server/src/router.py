@@ -4,6 +4,7 @@ from auth import api_key_auth
 
 from manager import manager
 from config import SERVER_ENDPOINT
+from schemas import CreateInterfaceSchema
 
 router = APIRouter(prefix='/api/v1/interface')
 
@@ -57,12 +58,12 @@ async def get_peer_config(interface_name: str, peer_name: str, api_key: APIKey =
 
 
 @router.post("/{interface_name}/peer", tags=["interface"])
-async def create_peer(interface_name: str, peer_name: str, api_key: APIKey = Depends(api_key_auth)):
+async def create_peer(interface_name: str, body: CreateInterfaceSchema, api_key: APIKey = Depends(api_key_auth)):
     interfaces = manager.interfaces
     for interface in interfaces:
         if interface.config.name == interface_name:
             try:
-                peer = interface.create_peer(peer_name)
+                peer = interface.create_peer(body.peer_name)
                 interface.config.save()
                 return {'config': interface.generate_peer_config(peer,endpoint=SERVER_ENDPOINT)}
             except Exception as e:
