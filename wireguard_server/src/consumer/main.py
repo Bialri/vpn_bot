@@ -1,4 +1,5 @@
 import pika
+import time
 from wireguard_manager import WGManager
 from pathlib import Path
 from schemas import ChangeStateMessage
@@ -20,19 +21,29 @@ def on_message(channel, method_frame, header_frame, body):
     interfaces = manager.interfaces
     for interface in interfaces:
         if interface.name == message.interface:
-            if message.status == 'stopped':
-                interface.stop_interface()
+            match message.status:
+                case 'stopped':
+                    interface.stop_interface()
+                case 'absent':
+                    manager.delete_interface(interface)
 
 
 def main():
     parametrs = pika.URLParameters('amqp://ID:egor0123@172.26.96.1:5672/')
     connection = pika.BlockingConnection(parametrs)
-    chanel = connection.channel()
-    chanel.basic_consume('demo', on_message)
+    while(1):
+        try:
+            channel = connection.channel()
+            break
+        except RuntimeError as e:
+            print('Connection not established, trying in 5 seconds...')
+            time.sleep(5)
+
+    channel.basic_consume('demo', on_message)
     try:
-        chanel.start_consuming()
+        channel.start_consuming()
     except KeyboardInterrupt:
-        chanel.stop_consuming()
+        channel.stop_consuming()
         connection.close()
         print('Connection closed')
 
