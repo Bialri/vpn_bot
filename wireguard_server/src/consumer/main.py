@@ -1,12 +1,11 @@
 import pika
 import time
 from wireguard_manager import WGManager
-from pathlib import Path
 from schemas import ChangeStateMessage
-from wireguard_server.src.config import DEFAULT_NETWORK_PREFIX
+from wireguard_server.src.config import WG_NETWORK_PREFIX, WG_CONFIG_DIR, RMQ_URL, RMQ_QUEUE
 
-CONFIG_DIR = Path('/etc/wireguard/')
-manager = WGManager(DEFAULT_NETWORK_PREFIX, CONFIG_DIR)
+
+manager = WGManager(WG_NETWORK_PREFIX,WG_CONFIG_DIR)
 
 
 def on_message(channel, method_frame, header_frame, body):
@@ -29,7 +28,7 @@ def on_message(channel, method_frame, header_frame, body):
 
 
 def main():
-    parametrs = pika.URLParameters('amqp://ID:egor0123@172.26.96.1:5672/')
+    parametrs = pika.URLParameters(RMQ_URL)
     connection = pika.BlockingConnection(parametrs)
     while(1):
         try:
@@ -40,7 +39,7 @@ def main():
             print('Connection not established, trying in 5 seconds...')
             time.sleep(5)
 
-    channel.basic_consume('demo', on_message)
+    channel.basic_consume(RMQ_QUEUE, on_message)
     try:
         print('Waiting for messages.')
         channel.start_consuming()

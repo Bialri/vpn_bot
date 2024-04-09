@@ -1,0 +1,5 @@
+[
+{% for item in host_settings[hostname].api_keys %}
+"{{ item }}" {{ "," if not loop.last }}
+{% endfor %}
+]
