@@ -18,6 +18,7 @@ async def get_interfaces(api_key: APIKey = Depends(api_key_auth)):
 async def create_interface(network_size: int = None ,api_key: APIKey = Depends(api_key_auth)):
     try:
         interface = manager.generate_new_interface(network_prefix=network_size)
+        interface.run()
         return {"status": "success",
                 "interface_name": interface.config.name}
     except Exception as e:
@@ -65,6 +66,7 @@ async def create_peer(interface_name: str, body: CreateInterfaceSchema, api_key:
             try:
                 peer = interface.create_peer(body.peer_name)
                 interface.config.save()
+                interface.update()
                 return {'config': interface.generate_peer_config(peer,endpoint=SERVER_ENDPOINT)}
             except Exception as e:
                 raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
@@ -81,6 +83,7 @@ async def update_peer(interface_name: str, peer_name: str, name: str, api_key: A
                     try:
                         peer.name = name
                         interface.config.save()
+                        interface.update()
                         return {'config': interface.generate_peer_config(peer, SERVER_ENDPOINT)}
                     except Exception as e:
                         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
@@ -97,6 +100,7 @@ async def delete_peer(interface_name: str, peer_name: str, api_key: APIKey = Dep
                     try:
                         interface.config.peer_configs.remove(peer)
                         interface.config.save()
+                        interface.update()
                         return {"status": "success"}
                     except Exception as e:
                         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
@@ -109,10 +113,10 @@ async def change_interface_status(interface_name: str, interface_status: bool, a
     for interface in interfaces:
         if interface.config.name == interface_name:
             if interface_status:
-                interface.run_interface()
+                interface.run()
                 return {"status": "success"}
             else:
-                interface.stop_interface()
+                interface.stop()
                 return {"status": "success"}
 
 
