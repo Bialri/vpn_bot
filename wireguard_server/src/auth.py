@@ -5,7 +5,7 @@ import hashlib
 import json
 import base64
 
-from .config import API_KEY_FILE
+from config import API_KEY_FILE
 
 api_key_header = APIKeyHeader(name="X-API-Key")
 
@@ -22,5 +22,5 @@ async def api_key_auth(api_key_header: str = Security(api_key_header)):
     if key_hashed_decoded not in api_keys:
         raise HTTPException(
             status_code=HTTP_401_UNAUTHORIZED,
-            detail="Invalid API Key",
+            detail="Invalidq API Key",
         )

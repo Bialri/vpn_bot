@@ -1,5 +1,5 @@
 from wireguard_manager import WGManager
-from .config import WG_CONFIG_DIR, WG_CONFIG_PREFIX, WG_NETWORK_PREFIX
+from config import WG_CONFIG_DIR, WG_CONFIG_PREFIX, WG_NETWORK_PREFIX
 
 
 POSTUP_TEMPLATES = ['iptables -I INPUT -p udp -j ACCEPT',
